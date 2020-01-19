@@ -213,7 +213,7 @@ func TestBreaker_Execute_AtLeastReqs(t *testing.T) {
 	toClosed := func(uint32, uint32) bool { return true }
 	b, err := New(
 		time.Minute, 2*time.Minute,
-		WithLeastReqs(1),
+		WithLeastReqs(10),
 		WithStateFunc(toOpen, toClosed),
 		withTime(1520100000),
 	)
