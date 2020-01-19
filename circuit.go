@@ -65,8 +65,22 @@ func WithLeastReqs(atLeastReqs uint32) OptionCall {
 // otherwise into the open state.
 func WithStateFunc(toOpen, toClosed ToState) OptionCall {
 	return func(b *Breaker) error {
+		if toOpen == nil {
+			return errors.New("circuit: toOpen must be defined")
+		}
+		if toClosed == nil {
+			return errors.New("circuit: toClosed must be defined")
+		}
 		b.toOpenState = toOpen
 		b.toClosedState = toClosed
+		return nil
+	}
+}
+
+// for test
+func withTime(ts int64) OptionCall {
+	return func(b *Breaker) error {
+		b.now = now(ts)
 		return nil
 	}
 }
@@ -86,12 +100,16 @@ func New(interval time.Duration, cooldown time.Duration, fns ...OptionCall) (*Br
 	b := &Breaker{
 		interval: interval.Nanoseconds(),
 		cooldown: cooldown.Nanoseconds(),
-		until:    time.Now().UnixNano() + interval.Nanoseconds(),
 		state:    closed,
+		now:      time.Now,
 	}
 
+	var err error
 	for _, fn := range fns {
-		fn(b)
+		err = fn(b)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if b.atLeastReqs == 0 {
@@ -103,6 +121,8 @@ func New(interval time.Duration, cooldown time.Duration, fns ...OptionCall) (*Br
 	if b.toClosedState == nil {
 		b.toClosedState = defaultToClosed
 	}
+
+	b.until = b.now().UnixNano() + interval.Nanoseconds()
 
 	return b, nil
 }
